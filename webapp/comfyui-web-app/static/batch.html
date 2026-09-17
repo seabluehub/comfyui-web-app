@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分批量产控制台 • Lumina Studio</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗂</text></svg>">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <div class="brand-badge">BATCH</div>
+            <div class="brand-title">
+                <h1>分批量产控制台</h1>
+                <span>按画风 / 服装 / 姿态组合筛选结果集 • 单队列顺序执行</span>
+            </div>
+        </div>
+
+        <div class="nav-center">
+            <div class="status-capsule" id="statusCapsule">
+                <span class="pulse-dot"></span>
+                <span id="capsuleText">队列空闲</span>
+            </div>
+        </div>
+
+        <div class="nav-actions">
+            <a class="btn btn-ghost" href="/" title="返回画廊">
+                <span class="icon">🖼</span> 返回画廊
+            </a>
+            <button class="btn btn-ghost" id="btnRefreshStatus" title="刷新状态">
+                <span class="icon">🔄</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="batch-container">
+        <!-- Step 1: Selection Filters -->
+        <section class="panel">
+            <div class="panel-header">
+                <h2><span class="step-no">1</span> 选择结果集</h2>
+                <div class="preview-bar" id="previewBar">
+                    <span>匹配 <strong id="pvMatched">-</strong> 张任务</span>
+                    <span class="dot">·</span>
+                    <span>待生成 <strong id="pvPending" class="c-warn">-</strong></span>
+                    <span class="dot">·</span>
+                    <span>已完成 <strong id="pvSuccess" class="c-ok">-</strong></span>
+                    <span class="dot">·</span>
+                    <span>失败 <strong id="pvFailed" class="c-err">-</strong></span>
+                </div>
+            </div>
+
+            <div class="filter-selectors">
+                <div class="ms-dropdown" id="msStyle">
+                    <button class="ms-toggle" type="button">画风：全部</button>
+                    <div class="ms-menu">
+                        <div class="ms-actions">
+                            <button type="button" data-act="all">全选</button>
+                            <button type="button" data-act="none">清空</button>
+                        </div>
+                        <div class="ms-options"></div>
+                    </div>
+                </div>
+
+                <div class="ms-dropdown" id="msOutfit">
+                    <button class="ms-toggle" type="button">服装：全部</button>
+                    <div class="ms-menu">
+                        <div class="ms-actions">
+                            <button type="button" data-act="all">全选</button>
+                            <button type="button" data-act="none">清空</button>
+                        </div>
+                        <div class="ms-options"></div>
+                    </div>
+                </div>
+
+                <div class="ms-dropdown" id="msPose">
+                    <button class="ms-toggle" type="button">姿态：全部</button>
+                    <div class="ms-menu">
+                        <div class="ms-actions">
+                            <button type="button" data-act="all">全选</button>
+                            <button type="button" data-act="none">清空</button>
+                        </div>
+                        <div class="ms-options"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Model & Params Config -->
+        <section class="panel">
+            <div class="panel-header">
+                <h2><span class="step-no">2</span> 大模型与生成参数</h2>
+                <span class="hint" id="modelsSource">模型列表加载中...</span>
+            </div>
+
+            <div class="preset-row">
+                <span class="preset-label">🎯 推荐方案</span>
+                <div class="preset-chips" id="presetChips"></div>
+            </div>
+
+            <div class="config-grid">
+                <div class="cfg-item">
+                    <label>工作流模板</label>
+                    <select id="cfgTemplate">
+                        <option value="sdxl">SDXL 极速量产</option>
+                        <option value="flux">Flux 高清精修</option>
+                    </select>
+                </div>
+                <div class="cfg-item">
+                    <label>底模 (Checkpoint)</label>
+                    <select id="cfgCheckpoint"><option value="">模板默认</option></select>
+                </div>
+                <div class="cfg-item">
+                    <label>角色 LoRA</label>
+                    <select id="cfgLora"><option value="__default__">角色默认 (lumina_anime_v1)</option><option value="__none__">不使用 LoRA</option></select>
+                </div>
+                <div class="cfg-item">
+                    <label>LoRA 权重 <span id="loraStrengthVal" class="hint">0.85</span></label>
+                    <input type="range" id="cfgLoraStrength" min="0" max="1.2" step="0.05" value="0.85">
+                </div>
+                <div class="cfg-item">
+                    <label>采样步数 (Steps)</label>
+                    <input type="number" id="cfgSteps" min="1" max="60" value="25" placeholder="默认 25">
+                </div>
+                <div class="cfg-item">
+                    <label>CFG 引导</label>
+                    <input type="number" id="cfgCfg" min="1" max="15" step="0.5" value="7" placeholder="默认 7.0">
+                </div>
+                <div class="cfg-item">
+                    <label>宽度 (px)</label>
+                    <input type="number" id="cfgWidth" min="256" max="2048" step="64" value="1024">
+                </div>
+                <div class="cfg-item">
+                    <label>高度 (px)</label>
+                    <input type="number" id="cfgHeight" min="256" max="2048" step="64" value="1024">
+                </div>
+                <div class="cfg-item">
+                    <label>本次上限 (张，留空=不限)</label>
+                    <input type="number" id="cfgLimit" min="1" placeholder="如 20">
+                </div>
+                <div class="cfg-item checkbox-item">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="cfgIncludeDone">
+                        重跑该组合下已完成/失败的图片
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 3: Execute & Progress -->
+        <section class="panel">
+            <div class="panel-header">
+                <h2><span class="step-no">3</span> 执行与实时进度</h2>
+                <div class="run-controls">
+                    <button class="btn btn-primary" id="btnExecute"><span class="icon">▶</span> 执行所选批次</button>
+                    <button class="btn btn-secondary" id="btnPause"><span class="icon">⏸</span> 暂停</button>
+                    <button class="btn btn-secondary" id="btnResume"><span class="icon">▶</span> 恢复</button>
+                    <button class="btn btn-danger" id="btnStop"><span class="icon">⏹</span> 停止</button>
+                </div>
+            </div>
+
+            <div class="progress-panels">
+                <div class="prog-block">
+                    <div class="progress-meta">
+                        <span class="progress-label">本批次进度 (Session)</span>
+                        <span class="progress-stat" id="sessionStat">0 / 0</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="sessionFill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="prog-block">
+                    <div class="progress-meta">
+                        <span class="progress-label">总体进度 (All 1000)</span>
+                        <span class="progress-stat" id="overallStat">0% (0 / 1000)</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill overall" id="overallFill" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="current-task-bar" id="currentTaskBar">
+                <span class="idle-text">队列空闲。选择组合并点击「执行所选批次」开始生成（单队列顺序执行，不并行）。</span>
+            </div>
+
+            <div class="stats-col batch-stats">
+                <div class="stat-card"><span class="stat-num" id="statPending">-</span><span class="stat-title">待生成</span></div>
+                <div class="stat-card"><span class="stat-num success" id="statSuccess">-</span><span class="stat-title">已完成</span></div>
+                <div class="stat-card"><span class="stat-num err" id="statFailed">-</span><span class="stat-title">失败</span></div>
+                <div class="stat-card"><span class="stat-num info" id="statAvg">0.0s</span><span class="stat-title">平均单张耗时</span></div>
+                <div class="stat-card"><span class="stat-num info" id="statEngine">-</span><span class="stat-title">引擎</span></div>
+            </div>
+
+            <div class="log-wrap">
+                <div class="log-header">实时事件日志</div>
+                <div class="log-list" id="logList">
+                    <div class="log-entry muted">暂无事件。执行批次后此处将实时显示采样步数、完成与异常事件。</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toastNotice"></div>
+
+    <script src="js/batch.js"></script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+{
+ "5": {
+  "inputs": {
+   "width": 1024,
+   "height": 1024,
+   "batch_size": 1
+  },
+  "class_type": "EmptyLatentImage",
+  "_meta": {
+   "title": "Empty Latent Image"
+  }
+ },
+ "6": {
+  "inputs": {
+   "text": " A high‑resolution portrait of a young Asian nude woman with long, straight black hair and fair skin. She has a delicate face, large expressive brown eyes, arched eyebrows, and full pink lips. She wears a deep red top. The background is softly lit, creating a warm, intimate atmosphere. The composition emphasizes natural lighting and gentle color tones for a realistic, serene look.",
+   "clip": [
+    "11",
+    0
+   ]
+  },
+  "class_type": "CLIPTextEncode",
+  "_meta": {
+   "title": "CLIP Text Encode (Prompt)"
+  }
+ },
+ "8": {
+  "inputs": {
+   "samples": [
+    "13",
+    0
+   ],
+   "vae": [
+    "10",
+    0
+   ]
+  },
+  "class_type": "VAEDecode",
+  "_meta": {
+   "title": "VAE Decode"
+  }
+ },
+ "9": {
+  "inputs": {
+   "filename_prefix": "Liblib",
+   "images": [
+    "8",
+    0
+   ]
+  },
+  "class_type": "SaveImage",
+  "_meta": {
+   "title": "Save Image"
+  }
+ },
+ "10": {
+  "inputs": {
+   "vae_name": "ae.safetensors"
+  },
+  "class_type": "VAELoader",
+  "_meta": {
+   "title": "Load VAE"
+  }
+ },
+ "11": {
+  "inputs": {
+   "clip_name1": "t5xxl_fp8_e4m3fn.safetensors",
+   "clip_name2": "clip_l.safetensors",
+   "type": "flux",
+   "device": "default"
+  },
+  "class_type": "DualCLIPLoader",
+  "_meta": {
+   "title": "DualCLIPLoader"
+  }
+ },
+ "13": {
+  "inputs": {
+   "noise": [
+    "25",
+    0
+   ],
+   "guider": [
+    "22",
+    0
+   ],
+   "sampler": [
+    "16",
+    0
+   ],
+   "sigmas": [
+    "17",
+    0
+   ],
+   "latent_image": [
+    "5",
+    0
+   ]
+  },
+  "class_type": "SamplerCustomAdvanced",
+  "_meta": {
+   "title": "SamplerCustomAdvanced"
+  }
+ },
+ "16": {
+  "inputs": {
+   "sampler_name": "euler"
+  },
+  "class_type": "KSamplerSelect",
+  "_meta": {
+   "title": "KSamplerSelect"
+  }
+ },
+ "17": {
+  "inputs": {
+   "scheduler": "simple",
+   "steps": 20,
+   "denoise": 1.0,
+   "model": [
+    "27",
+    0
+   ]
+  },
+  "class_type": "BasicScheduler",
+  "_meta": {
+   "title": "BasicScheduler"
+  }
+ },
+ "22": {
+  "inputs": {
+   "model": [
+    "27",
+    0
+   ],
+   "conditioning": [
+    "6",
+    0
+   ]
+  },
+  "class_type": "BasicGuider",
+  "_meta": {
+   "title": "BasicGuider"
+  }
+ },
+ "25": {
+  "inputs": {
+   "noise_seed": 1029894395409967
+  },
+  "class_type": "RandomNoise",
+  "_meta": {
+   "title": "RandomNoise"
+  }
+ },
+ "27": {
+  "inputs": {
+   "lora_name": "F.1-H.超真人物萌妹_极致逼真人像写真_F.1-超真人物萌妹v1.0.safetensors",
+   "strength_model": 1.0,
+   "model": [
+    "28",
+    0
+   ]
+  },
+  "class_type": "LoraLoaderModelOnly",
+  "_meta": {
+   "title": "LoraLoaderModelOnly"
+  }
+ },
+ "28": {
+  "inputs": {
+   "ckpt_name": "F.1基础算法模型-哩布在线可运行_F.1-dev-fp8.safetensors"
+  },
+  "class_type": "CheckpointLoaderSimple",
+  "_meta": {
+   "title": "Load Checkpoint"
+  }
+ }
+}

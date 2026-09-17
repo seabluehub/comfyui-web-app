@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Studio • 本地动漫角色1000张量产与画廊系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <div class="brand-badge">PRO</div>
+            <div class="brand-title">
+                <h1>Lumina Studio</h1>
+                <span>固定角色 1000 张变体量产生图系统</span>
+            </div>
+        </div>
+
+        <div class="nav-center">
+            <!-- Active Character Pill -->
+            <div class="character-pill" id="charPill">
+                <span class="avatar">👧</span>
+                <div class="pill-info">
+                    <strong id="charName">露米娜 (Lumina)</strong>
+                    <small id="charModel">SDXL • 专属 LoRA v1.0</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-actions">
+            <a class="btn btn-ghost" href="/batch.html" title="分批量产控制台">
+                <span class="icon">🗂</span> 分批量产
+            </a>
+            <div class="status-capsule" id="statusCapsule">
+                <span class="pulse-dot"></span>
+                <span id="capsuleText">队列就绪 (0 / 1000)</span>
+            </div>
+            <button class="btn btn-primary" id="btnStartBatch">
+                <span class="icon">▶</span> 开始量产
+            </button>
+            <button class="btn btn-secondary" id="btnPauseBatch" style="display:none;">
+                <span class="icon">⏸</span> 暂停
+            </button>
+            <button class="btn btn-ghost" id="btnRefresh" title="刷新画廊">
+                <span class="icon">🔄</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Production Dashboard Banner -->
+    <section class="dashboard-banner" id="dashBanner">
+        <div class="banner-inner">
+            <div class="progress-col">
+                <div class="progress-meta">
+                    <span class="progress-label">批量量产总体进度</span>
+                    <span class="progress-stat" id="progressStat">0% (0 / 1000)</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                </div>
+                <div class="progress-steps-live" id="liveStepText">
+                    <span class="idle-text">队列就绪。点击顶部「开始量产」启动流水线出图。</span>
+                </div>
+            </div>
+
+            <div class="stats-col">
+                <div class="stat-card">
+                    <span class="stat-num" id="statPending">1000</span>
+                    <span class="stat-title">待生成</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num success" id="statSuccess">0</span>
+                    <span class="stat-title">已完成</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num" id="statAvgTime">0.0s</span>
+                    <span class="stat-title">平均单张耗时</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num info" id="statEngine">仿真模式</span>
+                    <span class="stat-title">引擎状态</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filter & Toolbar -->
+    <div class="filter-toolbar">
+        <div class="filter-group">
+            <span class="filter-title">画风 (Style):</span>
+            <div class="filter-tags" id="styleTags">
+                <button class="tag-btn active" data-style="">全部</button>
+                <!-- Generated dynamically -->
+            </div>
+        </div>
+
+        <div class="filter-secondary">
+            <div class="select-wrapper">
+                <label>服装 (Outfit):</label>
+                <select id="selectOutfit">
+                    <option value="">全部服装 (20套)</option>
+                </select>
+            </div>
+
+            <div class="select-wrapper">
+                <label>姿态 (Pose):</label>
+                <select id="selectPose">
+                    <option value="">全部姿态 (5种)</option>
+                </select>
+            </div>
+
+            <div class="select-wrapper">
+                <label>排序:</label>
+                <select id="selectSort">
+                    <option value="newest">最新生成优先</option>
+                    <option value="oldest">最早生成优先</option>
+                    <option value="rating">评分最高优先</option>
+                    <option value="seed">种子序号 (Seed)</option>
+                </select>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="inputSearch" placeholder="搜索提示词或文件名...">
+                <button id="btnSearch">🔍</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gallery Grid -->
+    <main class="gallery-container">
+        <div class="gallery-waterfall" id="galleryGrid">
+            <!-- Image Cards Injected Here -->
+        </div>
+
+        <div class="empty-state" id="emptyState" style="display:none;">
+            <div class="empty-icon">🎨</div>
+            <h3>暂无符合条件的图片</h3>
+            <p>点击顶部「开始量产」启动出图，或调整上方的筛选标签。</p>
+        </div>
+
+        <div class="pagination-bar" id="paginationBar" style="display:none;">
+            <button class="btn btn-secondary" id="btnPrevPage">上一页</button>
+            <span id="pageInfo">第 1 页 / 共 1 页</span>
+            <button class="btn btn-secondary" id="btnNextPage">下一页</button>
+        </div>
+    </main>
+
+    <!-- Image Detail Modal (Lightbox) -->
+    <div class="modal-overlay" id="imageModal" style="display:none;">
+        <div class="modal-container">
+            <button class="modal-close" id="btnModalClose">&times;</button>
+            
+            <div class="modal-preview">
+                <img id="modalImg" src="" alt="Detail Preview">
+            </div>
+
+            <div class="modal-sidebar">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Image Title</h3>
+                    <div class="modal-tags" id="modalTags"></div>
+                </div>
+
+                <div class="modal-section">
+                    <label>正面提示词 (Prompt):</label>
+                    <div class="prompt-box" id="modalPrompt"></div>
+                    <button class="btn btn-copy" id="btnCopyPrompt">📋 复制完整 Prompt</button>
+                </div>
+
+                <div class="modal-section">
+                    <label>生成参数与元数据:</label>
+                    <div class="meta-grid">
+                        <div class="meta-item"><span>工作流模板:</span> <strong id="modalTemplate">-</strong></div>
+                        <div class="meta-item"><span>底模 (Checkpoint):</span> <strong id="modalCheckpoint">-</strong></div>
+                        <div class="meta-item"><span>角色 LoRA:</span> <strong id="modalLora">-</strong></div>
+                        <div class="meta-item"><span>Seed:</span> <strong id="modalSeed">-</strong></div>
+                        <div class="meta-item"><span>尺寸:</span> <strong id="modalResolution">-</strong></div>
+                        <div class="meta-item"><span>采样步数:</span> <strong id="modalSteps">-</strong></div>
+                        <div class="meta-item"><span>采样器:</span> <strong id="modalSampler">-</strong></div>
+                        <div class="meta-item"><span>CFG:</span> <strong id="modalCfg">-</strong></div>
+                        <div class="meta-item"><span>生成引擎:</span> <strong id="modalEngine">-</strong></div>
+                        <div class="meta-item"><span>生成时间:</span> <strong id="modalTime">-</strong></div>
+                        <div class="meta-item"><span>文件大小:</span> <strong id="modalSize">-</strong></div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <a id="btnDownloadOriginal" class="btn btn-primary" href="#" target="_blank" download>
+                        ⬇️ 下载高清原图
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toastNotice"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

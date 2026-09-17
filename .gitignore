@@ -1,0 +1,35 @@
+# ===== 运行时数据（不入库）=====
+output/
+docs/
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.log
+
+# ===== 本地环境配置（保留 .env.example 模板）=====
+.env
+.venv/
+venv/
+
+# ===== 压缩包与临时文件 =====
+*.zip
+*.tar
+*.gz
+*.7z
+temp/
+tmp/
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# ===== 系统文件 =====
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ===== 项目内散落的设计文档 =====
+webapp/comfyui-web-app/整体方案.md
