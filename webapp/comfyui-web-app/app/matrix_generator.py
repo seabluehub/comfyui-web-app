@@ -86,9 +86,11 @@ def populate_matrix(character_id: int = 1, force_rebuild: bool = False) -> int:
             conn.commit()
 
         # Get character info
-        cur.execute("SELECT trigger_words FROM characters WHERE id = ?", (character_id,))
+        cur.execute("SELECT trigger_words, negative_prompt FROM characters WHERE id = ?", (character_id,))
         row = cur.fetchone()
-        trigger_words = row[0] if row else "1girl, anime masterpiece"
+        trigger_words = row[0] if row and row[0] else "1girl, anime masterpiece"
+        char_neg = row[1] if row and len(row) > 1 and row[1] else ""
+        neg_prompt = f"{NEGATIVE_PROMPT_DEFAULT}, {char_neg}".strip(", ") if char_neg else NEGATIVE_PROMPT_DEFAULT
 
         matrix_records = []
         task_records = []
@@ -107,7 +109,7 @@ def populate_matrix(character_id: int = 1, force_rebuild: bool = False) -> int:
                     )
                     matrix_records.append((
                         character_id, style_tag, outfit_tag, pose_tag,
-                        prompt_raw, prompt_expanded, NEGATIVE_PROMPT_DEFAULT
+                        prompt_raw, prompt_expanded, neg_prompt
                     ))
 
         # Insert matrix

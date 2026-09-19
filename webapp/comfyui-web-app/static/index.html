@@ -19,14 +19,24 @@
         </div>
 
         <div class="nav-center">
-            <!-- Active Character Pill -->
-            <div class="character-pill" id="charPill">
-                <span class="avatar">👧</span>
+            <!-- Active Character Switcher Pill -->
+            <div class="character-switcher-pill" id="charPill">
+                <span class="avatar" id="navCharAvatar">👧</span>
                 <div class="pill-info">
-                    <strong id="charName">露米娜 (Lumina)</strong>
-                    <small id="charModel">SDXL • 专属 LoRA v1.0</small>
+                    <div class="pill-select-row">
+                        <select id="charSelect" class="char-dropdown-select" title="切换当前角色">
+                            <option value="1">露米娜 (Lumina)</option>
+                        </select>
+                    </div>
+                    <small id="charModel">SDXL • 专属 LoRA</small>
                 </div>
             </div>
+            <button class="btn btn-ghost" id="btnManageChars" title="配置或创建新角色">
+                <span class="icon">👥</span> 角色管理
+            </button>
+            <button class="btn btn-ghost" id="btnOpenBenchmark" title="一致性 4 阶段效果对比实验">
+                <span class="icon">🔬</span> 一致性对比
+            </button>
         </div>
 
         <div class="nav-actions">
@@ -194,9 +204,177 @@
         </div>
     </div>
 
+    <!-- Character Management Modal -->
+    <div class="modal-overlay" id="charModal" style="display:none;">
+        <div class="modal-container modal-wide">
+            <button class="modal-close" id="btnCloseCharModal">&times;</button>
+            <div class="char-modal-body">
+                <!-- Left: Characters List -->
+                <div class="char-list-col">
+                    <div class="char-list-header">
+                        <h3>👥 角色库</h3>
+                        <button class="btn btn-sm btn-primary" id="btnNewChar">+ 新建角色</button>
+                    </div>
+                    <div class="char-cards-list" id="charCardsList">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Right: Create / Edit Form -->
+                <div class="char-form-col">
+                    <div class="char-form-header">
+                        <h3 id="charFormTitle">新建角色定义</h3>
+                        <p>配置人脸骨骼、特征权重、专属 LoRA 与色彩排他屏障，实现 1000 张变体稳定量产。</p>
+                    </div>
+
+                    <!-- Preset Auto-Fill Bar -->
+                    <div class="preset-selector-bar">
+                        <div class="preset-title">✨ 一键套用官方工业级示范预设（点击自动填入标准参数）：</div>
+                        <div class="preset-buttons" id="presetButtons">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <form id="charForm" onsubmit="return false;">
+                        <input type="hidden" id="charFormId" value="">
+
+                        <div class="form-grid-2col">
+                            <div class="form-group">
+                                <label>角色中文名称 <span style="color:var(--danger)">*</span>:</label>
+                                <input type="text" id="inpCharName" placeholder="例如：星野 (Hoshino)" required>
+                                <div class="field-help">界面展示名，支持中英文。</div>
+                            </div>
+                            <div class="form-group">
+                                <label>英文标识代号 (Code) <span style="color:var(--danger)">*</span>:</label>
+                                <input type="text" id="inpCharCode" placeholder="例如：hoshino_chan" required>
+                                <div class="field-help">用于文件命名与数据检索，唯一不可重复，仅限英文字母/数字/下划线。</div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2col">
+                            <div class="form-group">
+                                <label>头像 Emoji / 图标:</label>
+                                <input type="text" id="inpCharAvatar" placeholder="例如：👧、🌸、⚔️、🪭" value="👧">
+                                <div class="field-help">在导航栏与角色卡片中展示的个性化图标。</div>
+                            </div>
+                            <div class="form-group">
+                                <label>适配基模架构:</label>
+                                <select id="selCharBaseModel">
+                                    <option value="sdxl">SDXL (推荐二次元生态)</option>
+                                    <option value="flux">Flux.1 (极高细节精修)</option>
+                                </select>
+                                <div class="field-help">决定默认生图工作流节点模板。</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>核心面部与特征锚定词 (Trigger Words) <span style="color:var(--danger)">*</span>:</label>
+                            <textarea id="inpCharTrigger" rows="3" placeholder="例如：1girl, (lumina_face:1.25), (pure silver hair:1.2), (glowing purple eyes:1.2), long twin-tails, delicate facial features" required></textarea>
+                            <div class="field-help">
+                                <strong>💡 权重语法说明：</strong>强制拼接在所有变体最前面。强烈建议对核心五官使用括号加权，如 <code>(character_face:1.25)</code>，确保跨画风时人脸轮廓不崩坏。
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>专属负向色彩与形变隔离词 (Negative Prompt):</label>
+                            <textarea id="inpCharNegative" rows="2" placeholder="例如：brown hair, black hair, golden hair, blue eyes, deformed face, bad anatomy"></textarea>
+                            <div class="field-help">
+                                <strong>🛡️ 色彩屏障原理：</strong>当角色为银发时，必须在负向词中屏蔽 <code>brown hair, black hair</code>，防止穿黑色/棕色服装时头发被环境混色染色。
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2col">
+                            <div class="form-group">
+                                <label>专属 LoRA 模型文件名:</label>
+                                <input type="text" id="inpCharLora" placeholder="例如：lumina_anime_v1.safetensors">
+                                <div class="field-help">存放于 <code>models/loras/</code> 目录下的微调权重，留空则仅使用纯 Prompt 生成。</div>
+                            </div>
+                            <div class="form-group">
+                                <label>推荐 LoRA 权重 (Strength):</label>
+                                <input type="number" id="inpCharLoraStrength" min="0.1" max="2.0" step="0.05" value="0.85">
+                                <div class="field-help">工业推荐值 <code>0.80 ~ 0.95</code>。低于 0.70 容易被画风吞噬，高于 1.05 画面容易烧焦。</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>角色设定与外貌描述说明:</label>
+                            <textarea id="inpCharDesc" rows="2" placeholder="记录角色的世界观、性格、服饰喜好与量产注意事项..."></textarea>
+                        </div>
+
+                        <div class="form-group" id="groupAutoMatrix">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="chkAutoMatrix" checked>
+                                <span>保存后立即展开生成该角色的 1000 张变体量产矩阵（10 画风 × 20 服装 × 5 姿态）</span>
+                            </label>
+                        </div>
+
+                        <div class="form-actions-row">
+                            <button type="button" class="btn btn-secondary" id="btnCancelChar">取消</button>
+                            <button type="button" class="btn btn-primary" id="btnSaveChar">💾 保存角色设定</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consistency Benchmark Modal -->
+    <div class="modal-overlay" id="benchmarkModal" style="display:none;">
+        <div class="modal-container benchmark-modal-container">
+            <button class="modal-close" id="btnCloseBenchmark">&times;</button>
+            
+            <div class="benchmark-header-bar">
+                <div>
+                    <h2>🔬 一致性优化方案分阶段对照实验 (Consistency Benchmark)</h2>
+                    <p>在锁定同一 Seed 和特定姿态/服装的前提下，横向对比 4 种阶梯优化方案对角色一致性的保持能力。</p>
+                </div>
+            </div>
+
+            <!-- Controls Bar -->
+            <div class="benchmark-controls-bar">
+                <div class="bench-ctrl-item">
+                    <label>实验角色:</label>
+                    <select id="benchSelChar"></select>
+                </div>
+                <div class="bench-ctrl-item">
+                    <label>变体画风:</label>
+                    <select id="benchSelStyle">
+                        <option value="cyberpunk">赛博朋克霓虹 (cyberpunk)</option>
+                        <option value="ghibli">吉卜力手绘 (ghibli)</option>
+                        <option value="gothic">暗黑哥特 (gothic)</option>
+                        <option value="watercolor">水彩淡彩艺术 (watercolor)</option>
+                        <option value="makoto_shinkai">新海诚唯美 (makoto_shinkai)</option>
+                    </select>
+                </div>
+                <div class="bench-ctrl-item">
+                    <label>变体服装:</label>
+                    <select id="benchSelOutfit">
+                        <option value="school_uniform">经典水手制服</option>
+                        <option value="furisode_kimono">华美振袖和服</option>
+                        <option value="tactical_gear">机能战术特工服</option>
+                        <option value="classic_maid">古典女仆装</option>
+                    </select>
+                </div>
+                <div class="bench-ctrl-item">
+                    <label>随机种子 (Seed):</label>
+                    <input type="number" id="benchSeed" value="424242" style="width:110px;">
+                </div>
+                <button class="btn btn-primary" id="btnRunBenchmark">
+                    <span class="icon">🚀</span> 开始 4 阶段对比分析
+                </button>
+            </div>
+
+            <!-- 4-Phase Side-by-Side Comparison Grid -->
+            <div class="benchmark-grid-container" id="benchmarkGrid">
+                <!-- Populated dynamically with 4 Phase Cards -->
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast -->
     <div class="toast" id="toastNotice"></div>
 
+    <script src="js/character_manager.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

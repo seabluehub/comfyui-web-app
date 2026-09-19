@@ -11,6 +11,73 @@ class CharacterOut(BaseModel):
     base_model: str
     description: Optional[str] = None
     created_at: str
+    avatar_icon: Optional[str] = "👧"
+    negative_prompt: Optional[str] = ""
+    lora_strength: Optional[float] = 0.85
+    task_count: int = 0
+    generated_count: int = 0
+
+class CharacterCreate(BaseModel):
+    name: str
+    code: str
+    trigger_words: str
+    default_lora: Optional[str] = ""
+    base_model: str = "sdxl"
+    description: Optional[str] = None
+    avatar_icon: Optional[str] = "👧"
+    negative_prompt: Optional[str] = ""
+    lora_strength: Optional[float] = 0.85
+    auto_generate_matrix: bool = True
+
+class CharacterUpdate(BaseModel):
+    name: Optional[str] = None
+    trigger_words: Optional[str] = None
+    default_lora: Optional[str] = None
+    base_model: Optional[str] = None
+    description: Optional[str] = None
+    avatar_icon: Optional[str] = None
+    negative_prompt: Optional[str] = None
+    lora_strength: Optional[float] = None
+
+class CharacterPreset(BaseModel):
+    name: str
+    code: str
+    avatar_icon: str
+    trigger_words: str
+    negative_prompt: str
+    default_lora: str
+    lora_strength: float
+    base_model: str
+    description: str
+    style_hint: str
+
+class ConsistencyBenchmarkRequest(BaseModel):
+    character_id: int = 1
+    style_tag: str = "ghibli"
+    outfit_tag: str = "school_uniform"
+    pose_tag: str = "portrait_close"
+    seed: int = 424242
+    checkpoint: Optional[str] = None
+
+class ConsistencyBenchmarkPhaseItem(BaseModel):
+    phase: int
+    phase_name: str
+    description: str
+    prompt: str
+    negative_prompt: str
+    lora_used: Optional[str] = None
+    lora_strength: float = 0.0
+    image_url: Optional[str] = None
+    status: str = "success"
+
+class ConsistencyBenchmarkResponse(BaseModel):
+    character_id: int
+    character_name: str
+    seed: int
+    style_tag: str
+    outfit_tag: str
+    pose_tag: str
+    phases: List[ConsistencyBenchmarkPhaseItem]
 
 class ImageItem(BaseModel):
     id: int

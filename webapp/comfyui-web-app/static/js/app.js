@@ -1,6 +1,6 @@
 // State Management
 const state = {
-    characterId: 1,
+    characterId: localStorage.getItem("active_character_id") ? parseInt(localStorage.getItem("active_character_id"), 10) : 1,
     currentStyle: "",
     currentOutfit: "",
     currentPose: "",
@@ -155,14 +155,28 @@ async function loadSystemHealth() {
 
 async function loadCharacter() {
     try {
-        const res = await fetch(`/api/gallery/character?character_id=${state.characterId}`);
+        const res = await fetch(`/api/characters/${state.characterId}`);
+        if (!res.ok) return;
         const data = await res.json();
-        document.getElementById("charName").textContent = data.name;
-        document.getElementById("charModel").textContent = `${data.base_model.toUpperCase()} • ${data.default_lora}`;
+        const avatarEl = document.getElementById("navCharAvatar");
+        if (avatarEl) avatarEl.textContent = data.avatar_icon || "👧";
+        const charModel = document.getElementById("charModel");
+        if (charModel) {
+            const loraStr = data.default_lora ? ` • ${data.default_lora.replace('.safetensors', '')}` : ' • 无LoRA';
+            charModel.textContent = `${(data.base_model || 'sdxl').toUpperCase()}${loraStr}`;
+        }
     } catch (e) {
         console.error("Character load error:", e);
     }
 }
+
+window.addEventListener("characterChanged", (e) => {
+    state.characterId = e.detail.id;
+    state.currentPage = 1;
+    loadCharacter();
+    loadTags();
+    loadGallery();
+});
 
 async function loadTags() {
     try {

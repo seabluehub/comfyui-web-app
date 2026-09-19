@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
+from typing import Optional, List, Dict, Any
 import json
 from app.config import WORKFLOWS_DIR, MOCK_MODE
 from app.database import get_db
@@ -133,9 +134,9 @@ async def list_models(request: Request):
 
 @router.post("/preview")
 def preview_selection(req: StartBatchRequest):
-    """Count tasks matching the current tag selection, grouped by status."""
+    """Count tasks matching the current tag selection and character, grouped by status."""
     filters = {"styles": req.styles, "outfits": req.outfits, "poses": req.poses}
-    where, params = build_task_filter(filters)
+    where, params = build_task_filter(filters, character_id=req.character_id)
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(f"""
@@ -153,9 +154,9 @@ def preview_selection(req: StartBatchRequest):
     }
 
 @router.get("/status", response_model=BatchStatusResponse)
-def get_status(request: Request):
+def get_status(request: Request, character_id: Optional[int] = None):
     worker = request.app.state.worker
-    return worker.get_status()
+    return worker.get_status(character_id=character_id)
 
 @router.post("/start")
 async def start_batch(req: StartBatchRequest, request: Request):
@@ -167,8 +168,8 @@ async def start_batch(req: StartBatchRequest, request: Request):
         raise HTTPException(status_code=409, detail="批量进程正在运行中，请先暂停或等待完成")
 
     filters = {"styles": req.styles, "outfits": req.outfits, "poses": req.poses}
-    where_all, params_all = build_task_filter(filters)
-    where_pending, params_pending = build_task_filter(filters, statuses=["PENDING"])
+    where_all, params_all = build_task_filter(filters, character_id=req.character_id)
+    where_pending, params_pending = build_task_filter(filters, statuses=["PENDING"], character_id=req.character_id)
 
     with get_db() as conn:
         cur = conn.cursor()
@@ -301,7 +302,7 @@ async def start_batch(req: StartBatchRequest, request: Request):
         "lora_strength": req.lora_strength
     }
 
-    queued = await worker.start(limit=req.limit, filters=filters, config=config)
+    queued = await worker.start(limit=req.limit, filters=filters, config=config, character_id=req.character_id)
     return {"status": "started", "queued": queued, "limit": req.limit, "warnings": warnings}
 
 @router.post("/pause")

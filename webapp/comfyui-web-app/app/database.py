@@ -86,25 +86,36 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_images_rating ON generated_images(rating);
         """)
 
-        # Lightweight migration: add gen_config column (full generation config JSON) for older DBs
+        # Lightweight migration: add gen_config column for generated_images
         cur = conn.cursor()
-        cols = [r[1] for r in cur.execute("PRAGMA table_info(generated_images)").fetchall()]
-        if "gen_config" not in cols:
+        cols_img = [r[1] for r in cur.execute("PRAGMA table_info(generated_images)").fetchall()]
+        if "gen_config" not in cols_img:
             cur.execute("ALTER TABLE generated_images ADD COLUMN gen_config TEXT")
 
+        # Lightweight migration: add avatar_icon, negative_prompt, lora_strength for characters
+        cols_char = [r[1] for r in cur.execute("PRAGMA table_info(characters)").fetchall()]
+        if "avatar_icon" not in cols_char:
+            cur.execute("ALTER TABLE characters ADD COLUMN avatar_icon VARCHAR(32) DEFAULT '👧'")
+        if "negative_prompt" not in cols_char:
+            cur.execute("ALTER TABLE characters ADD COLUMN negative_prompt TEXT DEFAULT ''")
+        if "lora_strength" not in cols_char:
+            cur.execute("ALTER TABLE characters ADD COLUMN lora_strength FLOAT DEFAULT 0.85")
+
         # Insert default character if none exists
-        cur = conn.cursor()
         cur.execute("SELECT id FROM characters WHERE code = 'lumina_chan'")
         if not cur.fetchone():
             cur.execute("""
-                INSERT INTO characters (name, code, default_lora, trigger_words, base_model, description)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO characters (name, code, default_lora, trigger_words, base_model, description, avatar_icon, negative_prompt, lora_strength)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 "露米娜 (Lumina)",
                 "lumina_chan",
                 "lumina_anime_v1.safetensors",
-                "1girl, lumina_face, silver hair, glowing purple eyes, long twin-tails, energetic expression, delicate facial features",
+                "1girl, (lumina_face:1.25), (pure silver hair:1.2), (glowing purple eyes:1.2), long twin-tails, energetic expression, delicate facial features",
                 "sdxl",
-                "固定二次元角色：银发紫瞳双马尾美少女，适配 1000 张多姿态、全风格与服装量产。"
+                "固定二次元角色：银发紫瞳双马尾美少女，赛博科技与学院风，适配 1000 张多姿态、全风格与服装量产。",
+                "👧",
+                "brown hair, black hair, golden hair, blue eyes, red eyes, mutiple girls, deformed face",
+                0.85
             ))
             conn.commit()

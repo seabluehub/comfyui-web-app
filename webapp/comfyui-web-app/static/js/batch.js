@@ -165,12 +165,19 @@ function onFilterChange() {
 }
 
 function currentFilters() {
+    const charId = window.CharacterManager ? window.CharacterManager.getActiveCharacterId() : 1;
     return {
+        character_id: charId,
         styles: msStyleCtl ? msStyleCtl.value : [],
         outfits: msOutfitCtl ? msOutfitCtl.value : [],
         poses: msPoseCtl ? msPoseCtl.value : []
     };
 }
+
+window.addEventListener("characterChanged", () => {
+    refreshPreview();
+    loadStatus();
+});
 
 async function refreshPreview() {
     try {
@@ -330,8 +337,9 @@ function initEvents() {
         btnExecute.disabled = true;
         try {
             const loraVal = cfgLora.value === "__default__" ? null : (cfgLora.value === "__none__" ? "" : cfgLora.value);
+            const charId = window.CharacterManager ? window.CharacterManager.getActiveCharacterId() : 1;
             const body = {
-                character_id: 1,
+                character_id: charId,
                 model: cfgTemplate.value,
                 styles: msStyleCtl.value,
                 outfits: msOutfitCtl.value,
@@ -401,7 +409,8 @@ async function postControl(url, msg) {
 // ===== Status & Progress =====
 async function loadStatus() {
     try {
-        const res = await fetch("/api/batch/status");
+        const charId = window.CharacterManager ? window.CharacterManager.getActiveCharacterId() : 1;
+        const res = await fetch(`/api/batch/status?character_id=${charId}`);
         const s = await res.json();
         renderStatus(s);
     } catch (e) { /* server restarting */ }

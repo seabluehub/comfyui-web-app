@@ -9,14 +9,17 @@ from app.config import COOLDOWN_BATCH_SIZE, COOLDOWN_SECONDS, FREE_MEMORY_BATCH_
 
 logger = logging.getLogger("batch_worker")
 
-def build_task_filter(filters: Optional[Dict[str, List[str]]], statuses: Optional[List[str]] = None):
+def build_task_filter(filters: Optional[Dict[str, List[str]]], statuses: Optional[List[str]] = None, character_id: Optional[int] = None):
     """
-    Build a SQL WHERE clause for selecting generation tasks by matrix tag filters.
+    Build a SQL WHERE clause for selecting generation tasks by matrix tag filters and character.
     Empty/None filter lists mean 'no restriction' (all values allowed).
     Returns (where_sql, params).
     """
     conds: List[str] = []
     params: List = []
+    if character_id is not None:
+        conds.append("t.character_id = ?")
+        params.append(character_id)
     if statuses:
         conds.append(f"t.status IN ({','.join('?' * len(statuses))})")
         params.extend(statuses)
@@ -41,6 +44,7 @@ class BatchWorker:
         # Filtered batch session state
         self.active_filters: Optional[Dict[str, List[str]]] = None
         self.gen_config: Dict[str, Any] = {}
+        self.character_id: int = 1
         self.session_total: int = 0
 
     def register_listener(self, callback: Callable[[Dict[str, Any]], Any]):
@@ -67,26 +71,30 @@ class BatchWorker:
             cur.execute("UPDATE generation_tasks SET status = 'PENDING' WHERE status = 'RUNNING'")
             conn.commit()
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self, character_id: Optional[int] = None) -> Dict[str, Any]:
         with get_db() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM generation_tasks")
-            total = cur.fetchone()[0]
-
-            cur.execute("SELECT status, COUNT(*) FROM generation_tasks GROUP BY status")
-            status_counts = dict(cur.fetchall())
+            if character_id:
+                cur.execute("SELECT COUNT(*) FROM generation_tasks WHERE character_id = ?", (character_id,))
+                total = cur.fetchone()[0]
+                cur.execute("SELECT status, COUNT(*) FROM generation_tasks WHERE character_id = ? GROUP BY status", (character_id,))
+                status_counts = dict(cur.fetchall())
+                cur.execute("SELECT file_name FROM generated_images WHERE character_id = ? ORDER BY id DESC LIMIT 1", (character_id,))
+                last_row = cur.fetchone()
+                last_img = last_row[0] if last_row else None
+            else:
+                cur.execute("SELECT COUNT(*) FROM generation_tasks")
+                total = cur.fetchone()[0]
+                cur.execute("SELECT status, COUNT(*) FROM generation_tasks GROUP BY status")
+                status_counts = dict(cur.fetchall())
+                cur.execute("SELECT file_name FROM generated_images ORDER BY id DESC LIMIT 1")
+                last_row = cur.fetchone()
+                last_img = last_row[0] if last_row else None
 
             pending = status_counts.get("PENDING", 0)
             running = status_counts.get("RUNNING", 0)
             success = status_counts.get("SUCCESS", 0)
             failed = status_counts.get("FAILED", 0)
-
-            cur.execute("""
-                SELECT file_name FROM generated_images
-                ORDER BY id DESC LIMIT 1
-            """)
-            last_row = cur.fetchone()
-            last_img = last_row[0] if last_row else None
 
         elapsed = (time.time() - self.start_time) if (self.is_running and self.start_time) else 0.0
         avg_sec = (elapsed / self.processed_in_session) if self.processed_in_session > 0 else 0.0
@@ -110,7 +118,7 @@ class BatchWorker:
         }
 
     async def start(self, limit: Optional[int] = None, filters: Optional[Dict[str, List[str]]] = None,
-                    config: Optional[Dict[str, Any]] = None) -> int:
+                    config: Optional[Dict[str, Any]] = None, character_id: int = 1) -> int:
         """Start the batch worker loop. Returns the number of queued tasks for this session."""
         if self.is_running:
             self._pause_event.set()
@@ -123,9 +131,10 @@ class BatchWorker:
         self.recover_interrupted_tasks()
         self.active_filters = filters
         self.gen_config = config or {}
+        self.character_id = character_id
 
         # Count how many tasks this filtered session will process
-        where, params = build_task_filter(filters, statuses=["PENDING"])
+        where, params = build_task_filter(filters, statuses=["PENDING"], character_id=character_id)
         with get_db() as conn:
             cur = conn.cursor()
             cur.execute(f"""
@@ -138,7 +147,8 @@ class BatchWorker:
         await self._emit_event("session_started", {
             "session_total": self.session_total,
             "limit": limit,
-            "filters": filters or {}
+            "filters": filters or {},
+            "character_id": character_id
         })
         asyncio.create_task(self._worker_loop(limit))
         return self.session_total
@@ -162,8 +172,8 @@ class BatchWorker:
             if limit is not None and tasks_done >= limit:
                 break
 
-            # Fetch next pending task (restricted to the active tag filters, if any)
-            where, fparams = build_task_filter(self.active_filters, statuses=["PENDING"])
+            # Fetch next pending task (restricted to the active tag filters and character)
+            where, fparams = build_task_filter(self.active_filters, statuses=["PENDING"], character_id=self.character_id)
             with get_db() as conn:
                 cur = conn.cursor()
                 cur.execute(f"""

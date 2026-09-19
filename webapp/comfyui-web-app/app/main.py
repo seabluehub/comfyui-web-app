@@ -11,7 +11,7 @@ from app.database import init_db
 from app.matrix_generator import populate_matrix
 from app.comfy_client import ComfyUIClient
 from app.batch_worker import BatchWorker
-from app.routers import gallery, batch, system
+from app.routers import gallery, batch, system, characters
 
 class ConnectionManager:
     def __init__(self):
@@ -76,6 +76,7 @@ app.add_middleware(
 app.include_router(gallery.router)
 app.include_router(batch.router)
 app.include_router(system.router)
+app.include_router(characters.router)
 
 # WebSocket endpoint for real-time generation progress
 @app.websocket("/ws/progress")
